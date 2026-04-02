@@ -121,10 +121,6 @@ The platform is broken down into three main experiences:
 
 ### 1. Set up the Backend
 
-Option A (`uv`, optional):
-
-If `uv` is installed on your machine:
-
 ```bash
 cd backend
 uv venv --python 3.12 venv
@@ -143,18 +139,6 @@ uv pip install --python venv/bin/python -r requirements.txt
 ```bash
 cd backend
 redis-server --port 6379 --save "" --appendonly no &
-./venv/bin/python -m celery -A celery_worker.celery_app worker --loglevel=info &
-./venv/bin/python -m celery -A celery_worker.celery_app beat --loglevel=info
-```
-
-If `6379` is already in use, either reuse the running Redis instance or run your own on `6380`:
-
-```bash
-cd backend
-redis-server --port 6380 --save "" --appendonly no &
-export REDIS_PORT=6380
-export CELERY_BROKER_URL=redis://localhost:6380/1
-export CELERY_RESULT_BACKEND=redis://localhost:6380/2
 ./venv/bin/python -m celery -A celery_worker.celery_app worker --loglevel=info &
 ./venv/bin/python -m celery -A celery_worker.celery_app beat --loglevel=info
 ```
@@ -179,12 +163,3 @@ cd frontend
 npm install
 npm run dev
 ```
-
-## Quick Troubleshooting
-
-- `ModuleNotFoundError: No module named 'pkg_resources'`: install a compatible `setuptools` in the active venv.
-  - `./venv/bin/pip install "setuptools<81"`
-- `redis-server` banner shows `Valkey`: this is a Redis-compatible server and works with this project.
-- API docs and Swagger UI:
-  - `/api/spec`
-  - `/api/docs`
