@@ -1,0 +1,35 @@
+.landing-cinematic {
+  --color-primary: #0D0D12;
+  --color-accent: #C9A84C;
+  --color-background: #111116;
+  --color-background-rgb: 17, 17, 22;
+  --color-card: #FAF8F5;
+  --color-text-dark: #2A2A35;
+  --color-text-light: #FAF8F5;
+  
+  --font-heading: 'Inter', sans-serif;
+  --font-drama: 'Playfair Display', serif;
+  --font-data: 'JetBrains Mono', monospace;
+
+  font-family: var(--font-heading);
+  color: var(--color-text-light);
+  background-color: var(--color-background);
+  min-height: 100vh;
+}
+
+.landing-cinematic .card-rounded {
+  border-radius: 2.5rem;
+}
+.landing-cinematic a {
+  transition: transform 0.2s ease-out;
+}
+.landing-cinematic a:hover {
+  transform: translateY(-1px);
+}
+.landing-cinematic button {
+  transition: transform 0.2s ease-out;
+}
+.landing-cinematic button:hover {
+  transform: scale(1.03);
+}
+

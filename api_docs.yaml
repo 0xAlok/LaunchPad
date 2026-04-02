@@ -1,0 +1,695 @@
+openapi: 3.0.0
+info:
+  title: LaunchPad Placement Portal API
+  version: 1.0.0
+  description: |
+    REST API for the LaunchPad campus placement portal.
+
+    **Authentication:** Most endpoints require an `Authentication-Token` header.
+    Log in via `/auth/login` to get your token, then click "Authorize" above and paste it.
+servers:
+  - url: http://localhost:5001/api
+
+paths:
+  # Auth
+  /auth/login:
+    post:
+      summary: Login user
+      description: Returns an auth token on successful login.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: admin@test.com
+              password: admin123
+      responses:
+        "200":
+          description: Login successful — returns token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { type: object }
+                  profile: { type: object }
+        "401": { description: Invalid credentials }
+
+  /auth/register:
+    post:
+      summary: Register new user
+      description: Create a student or company account.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/RegisterStudent"
+                - $ref: "#/components/schemas/RegisterCompany"
+            examples:
+              student:
+                summary: Student registration
+                value:
+                  email: newstudent@student.edu
+                  password: password123
+                  role: student
+                  name: John Doe
+                  phone: "+91 9999999999"
+                  branch: Computer Science
+                  cgpa: 8.5
+              company:
+                summary: Company registration
+                value:
+                  email: hr@acme.com
+                  password: password123
+                  role: company
+                  company_name: Acme Corp
+                  industry: Technology
+                  location: Mumbai
+      responses:
+        "201": { description: Registration successful }
+        "400": { description: Validation error }
+        "409": { description: Email already taken }
+
+  /auth/logout:
+    post:
+      summary: Logout current user
+      tags: [Auth]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Logged out }
+        "401": { description: Unauthorized }
+
+  /auth/me:
+    get:
+      summary: Get current logged-in user details
+      tags: [Auth]
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Current user info and profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { type: object }
+                  profile: { type: object }
+        "401": { description: Unauthorized }
+
+  /auth/public/analytics:
+    get:
+      summary: Public analytics summary
+      description: No authentication required. Returns aggregate placement stats for the landing page.
+      tags: [Auth]
+      responses:
+        "200":
+          description: Public stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  students: { type: integer }
+                  companies: { type: integer }
+                  drives: { type: integer }
+                  placements: { type: integer }
+
+  # Admin
+  /admin/companies:
+    get:
+      summary: List companies
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [approved, pending, blacklisted] }
+          description: Filter companies by status
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Search by name or industry
+      responses:
+        "200": { description: Companies list }
+        "403": { description: Forbidden — admin role required }
+
+  /admin/companies/{company_id}/approve:
+    put:
+      summary: Approve company
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Company approved }
+
+  /admin/companies/{company_id}/reject:
+    put:
+      summary: Reject company
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Company rejected }
+
+  /admin/companies/{company_id}/blacklist:
+    put:
+      summary: Toggle company blacklist
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Blacklist status toggled }
+
+  /admin/companies/{company_id}/deactivate:
+    put:
+      summary: Toggle company active status
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: company_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Active status toggled }
+
+  /admin/drives:
+    get:
+      summary: List placement drives
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, closed] }
+          description: Filter drives by status
+      responses:
+        "200": { description: Drives list }
+
+  /admin/drives/{drive_id}/approve:
+    put:
+      summary: Approve drive
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: drive_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Drive approved }
+
+  /admin/drives/{drive_id}/reject:
+    put:
+      summary: Reject drive
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: drive_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Drive rejected }
+
+  /admin/students:
+    get:
+      summary: List students
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Search by name, phone, or branch
+      responses:
+        "200": { description: Students list }
+
+  /admin/students/{student_id}/blacklist:
+    put:
+      summary: Toggle student blacklist
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: student_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Blacklist status toggled }
+
+  /admin/students/{student_id}/deactivate:
+    put:
+      summary: Toggle student active status
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: student_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Active status toggled }
+
+  /admin/analytics:
+    get:
+      summary: Admin dashboard analytics
+      description: Cached for 120 seconds.
+      tags: [Admin]
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Analytics data with summary, status breakdown, top companies, branch stats
+
+  # Company
+  /company/profile:
+    get:
+      summary: Get company profile
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Company profile data }
+    put:
+      summary: Update company profile
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCompanyProfile"
+            example:
+              name: Google LLC
+              description: Updated company description
+              website: https://google.com
+              location: Mountain View, CA
+              industry: Technology
+      responses:
+        "200": { description: Profile updated }
+
+  /company/drives:
+    get:
+      summary: List company's drives
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: List of drives }
+    post:
+      summary: Create a placement drive
+      description: Company must be approved. Drive is created in pending state awaiting admin approval.
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDrive"
+            example:
+              title: Backend Engineer 2026
+              role_offered: Software Engineer
+              package_lpa: 15.0
+              location: Bangalore
+              eligibility_cgpa: 7.5
+              eligible_branches: ["Computer Science", "Electronics"]
+              deadline: "2026-12-31T23:59:59+05:30"
+              description: Looking for strong backend engineers with Python/Go experience.
+      responses:
+        "201": { description: Drive created (pending approval) }
+        "400": { description: Validation error }
+        "403": { description: Company not approved or blacklisted }
+
+  /company/drives/{drive_id}:
+    put:
+      summary: Update a drive
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: drive_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDrive"
+            example:
+              description: Updated drive description
+              status: closed
+      responses:
+        "200": { description: Drive updated }
+        "403": { description: Not your drive }
+
+  /company/drives/{drive_id}/applications:
+    get:
+      summary: List applications for a drive
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: drive_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Applications list }
+        "403": { description: Access denied }
+
+  /company/applications/{app_id}/status:
+    put:
+      summary: Update application status
+      description: |
+        Valid transitions:
+        - applied → shortlisted, rejected
+        - shortlisted → selected, rejected
+        When setting status to `selected`, `joining_date` is required.
+        When setting status to `rejected`, `feedback` is required.
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [shortlisted, rejected, selected]
+                joining_date:
+                  type: string
+                  format: date
+                  description: Required when status is `selected` (YYYY-MM-DD)
+                feedback:
+                  type: string
+                  description: Required when status is `rejected`
+            example:
+              status: shortlisted
+      responses:
+        "200": { description: Status updated }
+        "400": { description: Invalid transition }
+
+  /company/applications/{app_id}/interview:
+    post:
+      summary: Schedule interview
+      description: Only for shortlisted applications. One interview per application.
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleInterview"
+            example:
+              scheduled_at: "2026-06-15T10:00:00+05:30"
+              location: Google Meet
+              interview_type: online
+              notes: Technical screening round
+      responses:
+        "201": { description: Interview scheduled }
+        "400": { description: Application not shortlisted }
+        "409": { description: Interview already scheduled }
+
+  /company/applications/export:
+    post:
+      summary: Export company applications and placements as CSV via email
+      description: Triggers a Celery task. CSV is sent to the company's email.
+      tags: [Company]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Export task queued }
+
+  # Student
+  /student/profile:
+    get:
+      summary: Get student profile
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Student profile data }
+    put:
+      summary: Update student profile
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStudentProfile"
+            example:
+              name: Alok Kumar
+              branch: Computer Science
+              cgpa: 9.2
+              phone: "+91 9876543210"
+              skills: Python, Flask, Vue.js
+              experience: "2 internships at startups"
+      responses:
+        "200": { description: Profile updated }
+
+  /student/resume:
+    get:
+      summary: Download resume
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: PDF file download
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404": { description: No resume uploaded }
+    post:
+      summary: Upload resume (PDF only)
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [resume]
+              properties:
+                resume:
+                  type: string
+                  format: binary
+                  description: PDF file
+      responses:
+        "200": { description: Resume uploaded }
+        "400": { description: No file or invalid format }
+
+  /student/drives:
+    get:
+      summary: Browse open placement drives
+      description: Returns approved, open drives the student is eligible for.
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Search by title, role, or company name
+        - name: branch
+          in: query
+          schema: { type: string }
+          description: Filter by branch eligibility
+        - name: min_package
+          in: query
+          schema: { type: number }
+          description: Minimum package in LPA
+      responses:
+        "200": { description: Eligible drives list }
+
+  /student/apply/{drive_id}:
+    post:
+      summary: Apply to a placement drive
+      description: ATS score is computed automatically from resume and drive description.
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: drive_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cover_letter: { type: string }
+            example:
+              cover_letter: Excited about this opportunity!
+      responses:
+        "201": { description: Application submitted }
+        "400": { description: Ineligible or deadline passed }
+        "409": { description: Already applied }
+
+  /student/applications:
+    get:
+      summary: Track applications
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Student's applications list }
+
+  /student/applications/{app_id}/withdraw:
+    put:
+      summary: Withdraw application
+      description: Only applications with status "applied" can be withdrawn.
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      parameters:
+        - { name: app_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Application withdrawn }
+        "400": { description: Cannot withdraw (wrong status) }
+
+  /student/applications/export:
+    post:
+      summary: Export applications as CSV via email
+      description: Triggers a Celery task. CSV is sent to the student's email.
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Export task queued }
+
+  /student/placements:
+    get:
+      summary: View secured placements
+      tags: [Student]
+      security:
+        - TokenAuth: []
+      responses:
+        "200": { description: Student's placements list }
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authentication-Token
+      description: Paste the token returned by POST /auth/login
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    RegisterStudent:
+      type: object
+      required: [email, password, role, name, phone, branch]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role: { type: string, enum: [student] }
+        name: { type: string }
+        phone: { type: string }
+        branch: { type: string }
+        cgpa: { type: number }
+        skills: { type: string }
+        experience: { type: string }
+
+    RegisterCompany:
+      type: object
+      required: [email, password, role, company_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role: { type: string, enum: [company] }
+        company_name: { type: string }
+        description: { type: string }
+        website: { type: string }
+        location: { type: string }
+        industry: { type: string }
+        hr_contact: { type: string }
+
+    UpdateCompanyProfile:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        website: { type: string }
+        location: { type: string }
+        industry: { type: string }
+
+    UpdateStudentProfile:
+      type: object
+      properties:
+        name: { type: string }
+        branch: { type: string }
+        cgpa: { type: number }
+        phone: { type: string }
+        skills: { type: string }
+        experience: { type: string }
+
+    CreateDrive:
+      type: object
+      required: [title, deadline]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        role_offered: { type: string }
+        package_lpa: { type: number }
+        location: { type: string }
+        eligibility_cgpa: { type: number, default: 0 }
+        eligible_branches:
+          type: array
+          items: { type: string }
+        deadline: { type: string, format: date-time, description: "ISO 8601 with timezone" }
+
+    UpdateDrive:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        role_offered: { type: string }
+        package_lpa: { type: number }
+        location: { type: string }
+        eligibility_cgpa: { type: number }
+        eligible_branches:
+          type: array
+          items: { type: string }
+        deadline: { type: string, format: date-time }
+        status: { type: string, enum: [open, closed, cancelled] }
+
+    ScheduleInterview:
+      type: object
+      required: [scheduled_at]
+      properties:
+        scheduled_at: { type: string, format: date-time, description: "ISO 8601 with timezone" }
+        location: { type: string }
+        interview_type: { type: string, enum: [in-person, online], default: in-person }
+        notes: { type: string }
