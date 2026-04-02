@@ -1,5 +1,8 @@
 # LaunchPad
 
+![447bdf7a-a823-4d13-9bce-6a9acef5e4a4](https://github.com/user-attachments/assets/24f44560-98a1-4564-b7ae-e13780385cb9)
+
+
 Hey! Welcome to LaunchPad.
 
 This is a web application for managing campus recruitment, created as part of the MAD-2 Project. This platform connects institutes, companies, and students, moving away from messy spreadsheets and manual email chains to a centralized, automated system.
